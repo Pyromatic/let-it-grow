@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&family=Caveat:wght@500;700&family=Bitter:wght@400;600&display=swap">
 <style>
-/* Layout: dark plank floor, one lighter carved board per album page, vines grown around its rim, six polaroids tacked inside, brass page controls below. Single committed look. */
+/* Layout: dark plank floor, one lighter carved board per album page, vines grown around its rim, four 16:9 prints taped inside, brass page controls below. Single committed look. */
 :root{
   --plank:#3b2417;
   --board:#8a5a36;
@@ -73,20 +73,23 @@ body{
 .folio{position:absolute;z-index:4;left:0;right:0;bottom:clamp(30px,4vw,44px);text-align:center;
   font-family:var(--f-hand);font-weight:700;font-size:22px;color:#3a2212}
 
-.grid{position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:38px 30px}
-@media (max-width:620px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px}}
+.grid{position:relative;z-index:2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:46px 40px;padding-top:8px}
+@media (max-width:560px){.grid{grid-template-columns:minmax(0,1fr);gap:34px}}
 .grid.turn{animation:turn .35s ease}
 @keyframes turn{from{opacity:0;transform:translateX(var(--dx,20px))}to{opacity:1;transform:none}}
 
 .slot{
-  position:relative;background:var(--paper);padding:10px 10px 30px;border-radius:2px;margin:0;
+  position:relative;background:var(--paper);padding:9px;border-radius:1px;margin:0;
   box-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 18px rgba(25,10,0,.45);
   transform:rotate(var(--r,0deg));transition:transform .25s ease;cursor:pointer;min-width:0;
 }
 .slot:hover{transform:rotate(0deg) scale(1.03);z-index:5}
-.tack{position:absolute;top:-7px;left:50%;width:16px;height:16px;margin-left:-8px;border-radius:50%;
-  background:radial-gradient(circle at 35% 35%,#fff3c4,var(--brass) 45%,#6b4a14);box-shadow:0 2px 3px rgba(0,0,0,.5);z-index:2}
-.ph{aspect-ratio:1/1;max-width:100%;background:#d8cdb8;overflow:hidden;display:grid;place-items:center}
+.tape{position:absolute;top:-13px;left:50%;width:min(34%,130px);height:28px;z-index:2;pointer-events:none;
+  transform:translateX(-50%) rotate(var(--t,-3deg));
+  background:linear-gradient(rgba(255,255,255,.18),rgba(255,255,255,0) 40%,rgba(0,0,0,.04)),rgba(232,219,182,.78);
+  box-shadow:0 1px 2px rgba(40,20,5,.25);
+  clip-path:polygon(0 4%,4% 0,8% 6%,12% 0,88% 0,92% 6%,96% 0,100% 5%,100% 95%,96% 100%,92% 94%,88% 100%,12% 100%,8% 94%,4% 100%,0 96%,3% 50%)}
+.ph{aspect-ratio:16/9;max-width:100%;background:#d8cdb8;overflow:hidden;display:grid;place-items:center}
 .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .empty{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
   border:2px dashed #a89878;color:#6d5d43;font-size:13px;text-align:center;padding:10px;
@@ -125,7 +128,7 @@ html,body{margin:0}*,*::before,*::after{box-sizing:border-box}img{max-width:100%
       <button class="btn" id="addBtn" type="button">Add photos</button>
       <button class="btn ghost" id="pageBtn" type="button">Add a page</button>
     </div>
-    <span class="hint">Six photos to a page. Photos you add here show up for everyone who visits.</span>
+    <span class="hint">Four photos to a page. Photos you add here show up for everyone who visits.</span>
   </div>
 
   <section class="board" id="board">
@@ -168,7 +171,7 @@ var SUPABASE_KEY = "sb_publishable_zx3Wf3it-K7fHNrMMmInzA_IU8cyHGR";
 var BUCKET = "photos";
 
 (function(){
-var PER=6;
+var PER=4;
 
 /* ---------- seeded random ---------- */
 function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -294,7 +297,8 @@ function loadItems(){return tx('readonly',function(s){return s.getAll()})}
 /* ---------- album ---------- */
 var MIN_PAGES=5;
 var grid=document.getElementById('grid'),items=[],urls={},page=0,busy=0;
-var tilts=['-2.2deg','1.6deg','-.8deg','2.4deg','-1.6deg','.9deg'];
+var tilts=['-1.1deg','.8deg','.6deg','-.9deg','1deg','-.5deg','-.7deg','1.2deg'];
+var tapes=['-4deg','3deg','2deg','-2.5deg','-3deg','4deg','1.5deg','-1.5deg'];
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function toast(t,ms){var el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},ms||2600)}
 function pageCount(){return Math.max(1,Math.ceil(items.length/PER))}
@@ -321,11 +325,11 @@ function render(dir){
   page=Math.min(page,pageCount()-1);
   grid.innerHTML='';
   pageItems(page).forEach(function(it,i){
-    var f=document.createElement('figure');f.className='slot';f.style.setProperty('--r',tilts[i%tilts.length]);f.tabIndex=0;
-    f.innerHTML='<span class="tack"></span><div class="ph"></div><button class="x" type="button" aria-label="Remove">×</button>';
+    var f=document.createElement('figure');f.className='slot';f.style.setProperty('--r',tilts[(page*PER+i)%tilts.length]);f.style.setProperty('--t',tapes[(page*PER+i)%tapes.length]);f.tabIndex=0;
+    f.innerHTML='<span class="tape"></span><div class="ph"></div><button class="x" type="button" aria-label="Remove">×</button>';
     var ph=f.querySelector('.ph'),src=srcOf(it);
     if(src){ph.innerHTML='<img alt="Album photo" loading="lazy">';ph.firstChild.src=src}
-    else ph.innerHTML='<div class="empty"><b>+ photo</b>Tap to tack one here</div>';
+    else ph.innerHTML='<div class="empty"><b>+ photo</b>Tap to tape one here</div>';
     var xb=f.querySelector('.x');if(!src&&CLOUD)xb.remove();else xb.addEventListener('click',function(e){e.stopPropagation();remove(it)});
     function act(){if(srcOf(it))openLB(it);else pickFor(it)}
     f.addEventListener('click',act);
@@ -427,8 +431,8 @@ function exportPage(){
   if(!photos.length){toast('Add some photos to this page first');return Promise.resolve(null)}
   var fontsReady=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
   return Promise.all([fontsReady].concat(photos.map(function(p){return loadImg(srcOf(p))}))).then(function(r){
-    var imgs=r.slice(1),k=2,cols=3,rows=Math.ceil(photos.length/cols);
-    var W=1040*k,padX=80*k,gap=44*k,top=250*k,slot=(W-2*padX-2*gap)/cols,fh=slot+30*k;
+    var imgs=r.slice(1),k=2,cols=2,rows=Math.ceil(photos.length/cols);
+    var W=1040*k,padX=90*k,gap=50*k,top=260*k,slot=(W-2*padX-(cols-1)*gap)/cols,ins=9*k,pw=slot-2*ins,phh=pw*9/16,fh=phh+2*ins;
     var H=top+rows*fh+(rows-1)*gap+150*k;
     var c=document.createElement('canvas');c.width=W;c.height=H;var x=c.getContext('2d');
     // board
@@ -453,17 +457,22 @@ function exportPage(){
     photos.forEach(function(p,i){
       var row=Math.floor(i/cols),col=i%cols,inRow=Math.min(cols,photos.length-row*cols);
       var left=(W-rowW(inRow))/2,cx=left+col*(slot+gap)+slot/2,cy=top+row*(fh+gap)+fh/2;
-      var ang=parseFloat(tilts[i%tilts.length])*Math.PI/180,img=imgs[i];
+      var gi=page*PER+i,ang=parseFloat(tilts[gi%tilts.length])*Math.PI/180,img=imgs[i];
       x.save();x.translate(cx,cy);x.rotate(ang);
       x.shadowColor='rgba(25,10,0,.5)';x.shadowBlur=18*k;x.shadowOffsetY=8*k;
       x.fillStyle='#f6efe1';x.fillRect(-slot/2,-fh/2,slot,fh);x.shadowColor='transparent';
-      var ins=10*k,sz=slot-2*ins;
-      x.fillStyle='#d8cdb8';x.fillRect(-slot/2+ins,-fh/2+ins,sz,sz);
-      if(img){var s=Math.max(sz/img.width,sz/img.height),sw=sz/s,sh=sz/s;
-        x.drawImage(img,(img.width-sw)/2,(img.height-sh)/2,sw,sh,-slot/2+ins,-fh/2+ins,sz,sz)}
-      var tg=x.createRadialGradient(-3*k,-fh/2-3*k,1,0,-fh/2,9*k);tg.addColorStop(0,'#fff3c4');tg.addColorStop(.45,'#c9a04a');tg.addColorStop(1,'#6b4a14');
-      x.shadowColor='rgba(0,0,0,.5)';x.shadowBlur=3*k;x.shadowOffsetY=2*k;
-      x.beginPath();x.arc(0,-fh/2+1*k,8*k,0,Math.PI*2);x.fillStyle=tg;x.fill();
+      x.fillStyle='#d8cdb8';x.fillRect(-slot/2+ins,-fh/2+ins,pw,phh);
+      if(img){var s=Math.max(pw/img.width,phh/img.height),sw=pw/s,sh=phh/s;
+        x.drawImage(img,(img.width-sw)/2,(img.height-sh)/2,sw,sh,-slot/2+ins,-fh/2+ins,pw,phh)}
+      // tape
+      var tw=Math.min(slot*.34,130*k),th=28*k,ta=parseFloat(tapes[gi%tapes.length])*Math.PI/180;
+      x.save();x.translate(0,-fh/2+1*k);x.rotate(ta);
+      x.beginPath();var zz=[[0,.04],[.04,0],[.08,.06],[.12,0],[.88,0],[.92,.06],[.96,0],[1,.05],[1,.95],[.96,1],[.92,.94],[.88,1],[.12,1],[.08,.94],[.04,1],[0,.96],[.03,.5]];
+      zz.forEach(function(p,j){var px=-tw/2+p[0]*tw,py=-th/2+p[1]*th;j?x.lineTo(px,py):x.moveTo(px,py)});x.closePath();
+      x.shadowColor='rgba(40,20,5,.25)';x.shadowBlur=2*k;x.shadowOffsetY=1*k;
+      x.fillStyle='rgba(232,219,182,.8)';x.fill();x.shadowColor='transparent';
+      var sg=x.createLinearGradient(0,-th/2,0,th/2);sg.addColorStop(0,'rgba(255,255,255,.22)');sg.addColorStop(.4,'rgba(255,255,255,0)');sg.addColorStop(1,'rgba(0,0,0,.05)');x.fillStyle=sg;x.fill();
+      x.restore();
       x.restore();
     });
     x.shadowColor='transparent';
