@@ -125,7 +125,7 @@ html,body{margin:0}*,*::before,*::after{box-sizing:border-box}img{max-width:100%
       <button class="btn" id="addBtn" type="button">Add photos</button>
       <button class="btn ghost" id="pageBtn" type="button">Add a page</button>
     </div>
-    <span class="hint">Six photos to a page. Drop photos on the board or tap an empty frame.</span>
+    <span class="hint">Six photos to a page. Photos you add here show up for everyone who visits.</span>
   </div>
 
   <section class="board" id="board">
@@ -157,22 +157,18 @@ html,body{margin:0}*,*::before,*::after{box-sizing:border-box}img{max-width:100%
 
 <script>
 /* ============================================================
-   YOUR PHOTOS FOR THE WEBSITE
-   Put your image files in a folder named "photos" next to this
-   file, then list their file names below, in the order you want.
-   Every six photos makes a new page. Once this list has photos,
-   visitors see only these, with no upload buttons. Add #edit to
-   the end of the address to get the upload buttons back.
+   SHARED PHOTO STORAGE (Supabase)
+   Paste your Supabase Project URL and publishable (anon) key
+   below. Photos anyone adds are then saved for every visitor.
+   Leave these as they are and photos only save in each
+   visitor's own browser.
    ============================================================ */
-var PHOTOS = [
-  // "photos/IMG_0001.jpg",
-  // "photos/IMG_0002.jpg",
-];
+var SUPABASE_URL = "YOUR-PROJECT-URL";
+var SUPABASE_KEY = "YOUR-PUBLISHABLE-KEY";
+var BUCKET = "photos";
 
 (function(){
 var PER=6;
-var SITE = PHOTOS.length > 0 && location.hash !== '#edit';
-if (SITE) document.getElementById('bar').hidden = true;
 
 /* ---------- seeded random ---------- */
 function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -264,23 +260,50 @@ function drawVines(){
   paintVines(x,W,H,1);
 }
 
-/* ---------- storage (IndexedDB, this browser only) ---------- */
-var db=null,mem=[];
+/* ---------- shared storage (Supabase) or this-browser fallback ---------- */
+var CLOUD = !!(SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.indexOf('YOUR-') !== 0);
+var BASE = CLOUD ? SUPABASE_URL.replace(/\/+$/,'') + '/storage/v1' : '';
+function hdrs(extra){var h={apikey:SUPABASE_KEY};if(/^eyJ/.test(SUPABASE_KEY))h.Authorization='Bearer '+SUPABASE_KEY;for(var k in extra)h[k]=extra[k];return h}
+function cloudList(){
+  return fetch(BASE+'/object/list/'+BUCKET,{method:'POST',headers:hdrs({'Content-Type':'application/json'}),
+    body:JSON.stringify({prefix:'',limit:1000,offset:0,sortBy:{column:'name',order:'asc'}})})
+  .then(function(r){if(!r.ok)throw new Error('list '+r.status);return r.json()})
+  .then(function(rows){return rows.filter(function(o){return o.id&&/\.(jpe?g|png|webp|gif)$/i.test(o.name)}).map(function(o){
+    return{id:'c:'+o.name,name:o.name,src:BASE+'/object/public/'+BUCKET+'/'+encodeURIComponent(o.name),order:0,cloud:true}})});
+}
+function cloudUpload(blob){
+  var ext=/png/.test(blob.type)?'png':/webp/.test(blob.type)?'webp':/gif/.test(blob.type)?'gif':'jpg';
+  var name=Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+  return fetch(BASE+'/object/'+BUCKET+'/'+name,{method:'POST',headers:hdrs({'Content-Type':blob.type||'image/jpeg','x-upsert':'false'}),body:blob})
+  .then(function(r){if(!r.ok)throw new Error('upload '+r.status);return name});
+}
+function cloudDelete(name){
+  return fetch(BASE+'/object/'+BUCKET,{method:'DELETE',headers:hdrs({'Content-Type':'application/json'}),body:JSON.stringify({prefixes:[name]})})
+  .then(function(r){if(!r.ok)throw new Error('delete '+r.status)});
+}
+// local fallback (only used when Supabase isn't set up yet)
+var db=null;
 function openDB(){return new Promise(function(res){try{var r=indexedDB.open('grove-album',1);
   r.onupgradeneeded=function(){r.result.createObjectStore('items',{keyPath:'id'});r.result.createObjectStore('meta')};
   r.onsuccess=function(){db=r.result;res()};r.onerror=function(){res()}}catch(e){res()}})}
 function tx(mode,fn){return new Promise(function(res){if(!db){res(null);return}try{var t=db.transaction('items',mode),out=fn(t.objectStore('items'));t.oncomplete=function(){res(out&&out.result)};t.onerror=function(){res(null)}}catch(e){res(null)}})}
-function saveItem(it){if(it.src)return;var c={id:it.id,order:it.order,blob:it.blob||null};return tx('readwrite',function(s){return s.put(c)})}
-function delItem(id){return tx('readwrite',function(s){return s.delete(id)})}
+function saveItem(it){if(CLOUD||it.cloud)return;var c={id:it.id,order:it.order,blob:it.blob||null};return tx('readwrite',function(s){return s.put(c)})}
+function delItem(id){if(CLOUD)return;return tx('readwrite',function(s){return s.delete(id)})}
 function loadItems(){return tx('readonly',function(s){return s.getAll()})}
 
 /* ---------- album ---------- */
-var grid=document.getElementById('grid'),items=[],urls={},page=0;
+var MIN_PAGES=5;
+var grid=document.getElementById('grid'),items=[],urls={},page=0,busy=0;
 var tilts=['-2.2deg','1.6deg','-.8deg','2.4deg','-1.6deg','.9deg'];
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function toast(t){var el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
+function toast(t,ms){var el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},ms||2600)}
 function pageCount(){return Math.max(1,Math.ceil(items.length/PER))}
 function pageItems(p){return items.slice(p*PER,p*PER+PER)}
+function pad(){
+  var photos=items.filter(function(i){return srcOf(i)}).length;
+  var want=Math.max(MIN_PAGES*PER,Math.ceil((photos+1)/PER)*PER);
+  while(items.length<want){items.push({id:uid()+items.length,order:nextOrder()})}
+}
 
 function shrink(file){return new Promise(function(res){
   var img=new Image(),u=URL.createObjectURL(file);
@@ -299,11 +322,11 @@ function render(dir){
   grid.innerHTML='';
   pageItems(page).forEach(function(it,i){
     var f=document.createElement('figure');f.className='slot';f.style.setProperty('--r',tilts[i%tilts.length]);f.tabIndex=0;
-    f.innerHTML='<span class="tack"></span><div class="ph"></div>'+(it.src?'':'<button class="x" type="button" aria-label="Remove">×</button>');
+    f.innerHTML='<span class="tack"></span><div class="ph"></div><button class="x" type="button" aria-label="Remove">×</button>';
     var ph=f.querySelector('.ph'),src=srcOf(it);
     if(src){ph.innerHTML='<img alt="Album photo" loading="lazy">';ph.firstChild.src=src}
     else ph.innerHTML='<div class="empty"><b>+ photo</b>Tap to tack one here</div>';
-    var xb=f.querySelector('.x');if(xb)xb.addEventListener('click',function(e){e.stopPropagation();remove(it)});
+    var xb=f.querySelector('.x');if(!src&&CLOUD)xb.remove();else xb.addEventListener('click',function(e){e.stopPropagation();remove(it)});
     function act(){if(srcOf(it))openLB(it);else pickFor(it)}
     f.addEventListener('click',act);
     f.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}});
@@ -322,39 +345,65 @@ document.getElementById('prev').addEventListener('click',function(){go(-1)});
 document.getElementById('next').addEventListener('click',function(){go(1)});
 
 function remove(it){
-  if(srcOf(it)&&!it._armed){it._armed=true;toast('Tap × again to remove this photo');setTimeout(function(){it._armed=false},2500);return}
+  if(srcOf(it)&&!it._armed){it._armed=true;toast(CLOUD?'Tap × again to remove this photo for everyone':'Tap × again to remove this photo');setTimeout(function(){it._armed=false},2500);return}
+  if(it.cloud){busy++;cloudDelete(it.name).then(function(){toast('Photo removed');return refresh()},function(){toast('Couldn’t remove that photo. Check your connection and try again.')}).then(function(){busy--});return}
   if(urls[it.id]&&it.blob)URL.revokeObjectURL(urls[it.id]);delete urls[it.id];
-  items=items.filter(function(i){return i!==it});delItem(it.id);render();
+  items=items.filter(function(i){return i!==it});delItem(it.id);pad();render();
 }
 function nextOrder(){return items.reduce(function(m,i){return Math.max(m,i.order)},0)+1}
 function addEmptyPage(){for(var i=0;i<PER;i++){var it={id:uid()+i,order:nextOrder()};items.push(it);saveItem(it)}}
+
 function addFiles(files){
   files=[].slice.call(files).filter(function(f){return /^image\//.test(f.type)});if(!files.length)return;
+  toast('Adding '+files.length+' photo'+(files.length===1?'':'s')+'…',60000);
   Promise.all(files.map(shrink)).then(function(blobs){
-    var empties=items.filter(function(i){return !srcOf(i)}).sort(function(a,b){return a.order-b.order}),last=null,count=0;
-    blobs.forEach(function(b){if(!b)return;var it=empties.shift();
-      if(!it){it={id:uid(),order:nextOrder()};items.push(it)}
-      it.blob=b;saveItem(it);last=it;count++});
-    // pad the final page with empty frames so it stays a full spread
+    blobs=blobs.filter(Boolean);
+    if(CLOUD){
+      busy++;
+      // upload one at a time so they keep the order they were picked in
+      var ok=0,fail=0,chain=Promise.resolve();
+      blobs.forEach(function(b){chain=chain.then(function(){return cloudUpload(b).then(function(){ok++},function(){fail++})})});
+      return chain.then(refresh).then(function(){
+        busy--;
+        var last=items.filter(function(i){return srcOf(i)}).length-1;if(last>=0)page=Math.floor(last/PER);render();
+        toast(fail?(ok+' added, '+fail+' didn’t upload. Try those again.'):(ok+' photo'+(ok===1?'':'s')+' added for everyone'));
+      });
+    }
+    var empties=items.filter(function(i){return !srcOf(i)}).sort(function(a,b){return a.order-b.order}),last=null;
+    blobs.forEach(function(b){var it=empties.shift();if(!it){it={id:uid(),order:nextOrder()};items.push(it)}it.blob=b;saveItem(it);last=it});
     while(items.length%PER){var e={id:uid(),order:nextOrder()};items.push(e);saveItem(e)}
     if(last){items.sort(function(a,b){return a.order-b.order});page=Math.floor(items.indexOf(last)/PER)}
-    render();toast(count+' photo'+(count===1?'':'s')+' added');
+    render();toast(blobs.length+' photo'+(blobs.length===1?'':'s')+' added');
   });
 }
-var pending=null,file1=document.getElementById('file1');
+var file1=document.getElementById('file1'),pending=null;
 function pickFor(it){pending=it;file1.value='';file1.click()}
-file1.addEventListener('change',function(){var f=file1.files[0];if(!f||!pending)return;var it=pending;
-  shrink(f).then(function(b){if(!b)return;it.blob=b;delete urls[it.id];saveItem(it);render()})});
+file1.addEventListener('change',function(){var f=file1.files[0];if(!f)return;
+  if(CLOUD){addFiles([f]);return}
+  var it=pending;if(!it)return;shrink(f).then(function(b){if(!b)return;it.blob=b;delete urls[it.id];saveItem(it);render()})});
 var file=document.getElementById('file');
 document.getElementById('addBtn').addEventListener('click',function(){file.value='';file.click()});
 file.addEventListener('change',function(){addFiles(file.files)});
 document.getElementById('pageBtn').addEventListener('click',function(){addEmptyPage();page=pageCount()-1;render(1);toast('Page '+(page+1)+' added')});
 
-if(!SITE){
-  ['dragenter','dragover'].forEach(function(t){board.addEventListener(t,function(e){e.preventDefault();board.classList.add('drag')})});
-  ['dragleave','drop'].forEach(function(t){board.addEventListener(t,function(e){e.preventDefault();board.classList.remove('drag')})});
-  board.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.files)addFiles(e.dataTransfer.files)});
-  document.addEventListener('paste',function(e){var f=[].slice.call((e.clipboardData||{}).files||[]);if(f.length)addFiles(f)});
+['dragenter','dragover'].forEach(function(t){board.addEventListener(t,function(e){e.preventDefault();board.classList.add('drag')})});
+['dragleave','drop'].forEach(function(t){board.addEventListener(t,function(e){e.preventDefault();board.classList.remove('drag')})});
+board.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.files)addFiles(e.dataTransfer.files)});
+document.addEventListener('paste',function(e){var f=[].slice.call((e.clipboardData||{}).files||[]);if(f.length)addFiles(f)});
+
+/* pull the shared photo list; photos fill frames in upload order */
+var lastSig='';
+function refresh(){
+  if(!CLOUD)return Promise.resolve();
+  return cloudList().then(function(list){
+    var sig=list.map(function(i){return i.name}).join('|');
+    if(sig===lastSig&&items.length)return;lastSig=sig;
+    list.forEach(function(it,i){it.order=i});
+    items=list;pad();render();
+  },function(){
+    if(!items.length){pad();render()}
+    toast('Couldn’t load the shared photos. Check your connection and reload.',5000);
+  });
 }
 
 /* lightbox */
@@ -372,7 +421,7 @@ document.addEventListener('keydown',function(e){
 });
 
 /* ---------- download the page as a photo ---------- */
-function loadImg(src){return new Promise(function(res){var i=new Image();i.onload=function(){res(i)};i.onerror=function(){res(null)};i.src=src})}
+function loadImg(src){return new Promise(function(res){var i=new Image();if(/^https?:/.test(src))i.crossOrigin='anonymous';i.onload=function(){res(i)};i.onerror=function(){res(null)};i.src=src})}
 function exportPage(){
   var photos=pageItems(page).filter(function(i){return srcOf(i)});
   if(!photos.length){toast('Add some photos to this page first');return Promise.resolve(null)}
@@ -442,14 +491,18 @@ if(window.ResizeObserver)new ResizeObserver(function(){clearTimeout(rt);rt=setTi
 
 /* boot */
 drawVines();
-var baked=PHOTOS.map(function(src,i){return{id:'site'+i,src:src,order:-100000+i}});
-if(SITE){items=baked;render();return}
-openDB().then(loadItems).then(function(r){
-  items=baked.concat(r||[]);
-  if(items.length<PER*5){while(items.length<PER*5){var it={id:uid()+items.length,order:nextOrder()};items.push(it);saveItem(it)}}
-  while(items.length%PER){var e={id:uid(),order:nextOrder()};items.push(e);saveItem(e)}
-  render();
-});
+if(CLOUD){
+  refresh();
+  setInterval(function(){if(!busy&&!document.hidden)refresh()},45000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden&&!busy)refresh()});
+}else{
+  openDB().then(loadItems).then(function(r){
+    items=r||[];
+    while(items.length<PER*MIN_PAGES){var it={id:uid()+items.length,order:nextOrder()};items.push(it);saveItem(it)}
+    while(items.length%PER){var e={id:uid(),order:nextOrder()};items.push(e);saveItem(e)}
+    render();
+  });
+}
 })();
 </script>
 
