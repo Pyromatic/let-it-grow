@@ -2,7 +2,7 @@
 -- Creates a public "photos" bucket that anyone can view, add to and remove from.
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('photos', 'photos', true, 10485760, array['image/jpeg','image/png','image/webp','image/gif'])
+values ('photos', 'photos', true, 52428800, array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','application/json'])
 on conflict (id) do update set public = true,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
@@ -18,3 +18,8 @@ create policy "Album: anyone can add photos"
 create policy "Album: anyone can remove photos"
   on storage.objects for delete to anon, authenticated
   using (bucket_id = 'photos');
+
+create policy "Album: anyone can replace photos"
+  on storage.objects for update to anon, authenticated
+  using (bucket_id = 'photos')
+  with check (bucket_id = 'photos');
