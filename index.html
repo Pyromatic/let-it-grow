@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Let It Grow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&family=Caveat:wght@500;700&family=Bitter:wght@400;600&display=swap">
+<style>
+/* Layout: dark plank floor, one lighter carved board per album page, vines grown around its rim, six polaroids tacked inside, brass page controls below. Single committed look. */
+:root{
+  --plank:#3b2417;
+  --board:#8a5a36;
+  --board-edge:#5a3720;
+  --paper:#f6efe1;
+  --ink:#2b1a10;
+  --cream:#f3e6cc;
+  --leaf:#4f7a2e;
+  --brass:#c9a04a;
+  --pumpkin:#d8772a;
+  --f-display:"Fredericka the Great","Rockwell",Georgia,serif;
+  --f-hand:"Caveat","Segoe Print","Comic Sans MS",cursive;
+  --f-ui:"Bitter",Georgia,"Times New Roman",serif;
+  color-scheme:dark;
+}
+html,body{background:var(--plank);color:var(--cream)}
+body{
+  font-family:var(--f-ui);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:28px 48px;
+  background-color:var(--plank);background-size:900px auto;min-height:100%;
+}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+/* toolbar */
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.bar[hidden]{display:none}
+.hint{font-size:13px;color:#d9c39b;opacity:.85}
+.btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{
+  font-family:var(--f-ui);font-weight:600;font-size:14px;letter-spacing:.04em;
+  color:var(--ink);background:linear-gradient(#e7c97f,var(--brass));
+  border:1px solid #7a5a1d;border-radius:6px;padding:9px 16px;cursor:pointer;
+  box-shadow:0 2px 0 #6b4a14,0 4px 10px rgba(0,0,0,.35);
+}
+.btn:hover{filter:brightness(1.07)}
+.btn:active{transform:translateY(1px);box-shadow:0 1px 0 #6b4a14}
+.btn:disabled{opacity:.45;cursor:default;filter:none}
+.btn.ghost{background:rgba(0,0,0,.25);color:var(--cream);border-color:#a07a4a;box-shadow:none}
+.btn:focus-visible,.slot:focus-visible,.x:focus-visible{outline:3px solid #f2d27a;outline-offset:3px}
+
+/* the board */
+.board{
+  position:relative;border-radius:14px;
+  background-color:var(--board);background-size:700px auto;
+  box-shadow:inset 0 0 0 6px var(--board-edge),inset 0 0 40px rgba(30,15,5,.55),0 18px 40px rgba(0,0,0,.55);
+  padding:clamp(54px,8vw,84px) clamp(28px,6vw,72px) clamp(64px,8vw,96px);
+}
+.board::after{content:"";position:absolute;inset:18px;border-radius:8px;pointer-events:none;
+  box-shadow:inset 0 2px 3px rgba(0,0,0,.45),0 1px 0 rgba(255,220,170,.18)}
+.board.drag{box-shadow:inset 0 0 0 6px var(--brass),inset 0 0 40px rgba(30,15,5,.55),0 18px 40px rgba(0,0,0,.55)}
+#vines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}
+
+.title{
+  position:relative;z-index:4;text-align:center;margin:0 auto 34px;max-width:22ch;
+  font-family:var(--f-display);font-weight:400;font-size:clamp(30px,5.4vw,56px);line-height:1.1;
+  color:#2a160b;text-wrap:balance;
+  text-shadow:0 1px 0 rgba(255,215,160,.35),0 -1px 0 rgba(0,0,0,.35);
+}
+.yr{display:block;margin-top:8px;font-family:var(--f-ui);font-weight:600;font-size:clamp(13px,1.6vw,16px);letter-spacing:.32em;text-transform:uppercase;color:var(--pumpkin);text-shadow:0 1px 0 rgba(0,0,0,.45)}
+.folio{position:absolute;z-index:4;left:0;right:0;bottom:clamp(30px,4vw,44px);text-align:center;
+  font-family:var(--f-hand);font-weight:700;font-size:22px;color:#3a2212}
+
+.grid{position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:38px 30px}
+@media (max-width:620px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 14px}}
+.grid.turn{animation:turn .35s ease}
+@keyframes turn{from{opacity:0;transform:translateX(var(--dx,20px))}to{opacity:1;transform:none}}
+
+.slot{
+  position:relative;background:var(--paper);padding:10px 10px 30px;border-radius:2px;margin:0;
+  box-shadow:0 1px 1px rgba(0,0,0,.2),0 8px 18px rgba(25,10,0,.45);
+  transform:rotate(var(--r,0deg));transition:transform .25s ease;cursor:pointer;min-width:0;
+}
+.slot:hover{transform:rotate(0deg) scale(1.03);z-index:5}
+.tack{position:absolute;top:-7px;left:50%;width:16px;height:16px;margin-left:-8px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#fff3c4,var(--brass) 45%,#6b4a14);box-shadow:0 2px 3px rgba(0,0,0,.5);z-index:2}
+.ph{aspect-ratio:1/1;max-width:100%;background:#d8cdb8;overflow:hidden;display:grid;place-items:center}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.empty{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  border:2px dashed #a89878;color:#6d5d43;font-size:13px;text-align:center;padding:10px;
+  background:repeating-linear-gradient(45deg,#e4d9c3 0 10px,#ddd1b9 10px 20px)}
+.empty b{font-family:var(--f-hand);font-size:24px;color:var(--leaf);line-height:1}
+.x{position:absolute;top:4px;right:4px;width:28px;height:28px;border-radius:50%;border:0;cursor:pointer;
+  background:rgba(43,26,16,.75);color:var(--cream);font-size:16px;line-height:28px;opacity:0;transition:opacity .2s;z-index:3}
+.slot:hover .x,.slot:focus-within .x{opacity:1}
+@media (hover:none){.x{opacity:.85}}
+
+/* page controls + download */
+.pager{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.turnbtns{display:flex;gap:10px;align-items:center}
+.pnum{font-family:var(--f-hand);font-size:24px;font-weight:700;color:var(--cream);min-width:7ch;text-align:center;font-variant-numeric:tabular-nums}
+.dl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dl small{color:#d9c39b;font-size:12px}
+
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:50;background:rgba(15,8,3,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  padding:calc(20px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.lb img{max-width:100%;max-height:78vh;border:10px solid var(--paper);border-bottom-width:14px;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.lb .row{display:flex;gap:10px}
+
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;
+  background:var(--ink);color:var(--cream);border:1px solid #a07a4a;padding:8px 16px;border-radius:6px;font-size:14px;max-width:calc(100% - 32px);text-align:center}
+@media (prefers-reduced-motion:reduce){.slot,.x{transition:none}.grid.turn{animation:none}}
+
+html,body{margin:0}*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="bar" id="bar">
+    <div class="btns">
+      <button class="btn" id="addBtn" type="button">Add photos</button>
+      <button class="btn ghost" id="pageBtn" type="button">Add a page</button>
+    </div>
+    <span class="hint">Six photos to a page. Drop photos on the board or tap an empty frame.</span>
+  </div>
+
+  <section class="board" id="board">
+    <canvas id="vines" aria-hidden="true"></canvas>
+    <h1 class="title" id="title">Let It Grow<span class="yr">Halloween 2026</span></h1>
+    <div class="grid" id="grid"></div>
+    <div class="folio" id="folio"></div>
+  </section>
+
+  <div class="pager">
+    <div class="turnbtns">
+      <button class="btn ghost" id="prev" type="button" aria-label="Previous page">◀ Back</button>
+      <span class="pnum" id="pnum">1 / 1</span>
+      <button class="btn ghost" id="next" type="button" aria-label="Next page">Next ▶</button>
+    </div>
+    <div class="dl">
+      <button class="btn" id="dlBtn" type="button">Download this page as a photo</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file" accept="image/*" multiple hidden>
+<input type="file" id="file1" accept="image/*" hidden>
+<div class="lb" id="lb" hidden>
+  <img id="lbImg" alt="Album photo">
+  <div class="row"><button class="btn ghost" id="lbPrev" type="button">Previous</button><button class="btn" id="lbClose" type="button">Close</button><button class="btn ghost" id="lbNext" type="button">Next</button></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ============================================================
+   YOUR PHOTOS FOR THE WEBSITE
+   Put your image files in a folder named "photos" next to this
+   file, then list their file names below, in the order you want.
+   Every six photos makes a new page. Once this list has photos,
+   visitors see only these, with no upload buttons. Add #edit to
+   the end of the address to get the upload buttons back.
+   ============================================================ */
+var PHOTOS = [
+  // "photos/IMG_0001.jpg",
+  // "photos/IMG_0002.jpg",
+];
+
+(function(){
+var PER=6;
+var SITE = PHOTOS.length > 0 && location.hash !== '#edit';
+if (SITE) document.getElementById('bar').hidden = true;
+
+/* ---------- seeded random ---------- */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* ---------- procedural wood ---------- */
+function wood(w,h,plankH,base,seed){
+  var R=rng(seed),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');
+  for(var py=0;py<h;py+=plankH){
+    var shade=(R()-.5)*22;
+    x.fillStyle='rgb('+(base[0]+shade)+','+(base[1]+shade*.7)+','+(base[2]+shade*.5)+')';
+    x.fillRect(0,py,w,plankH);
+    for(var i=0;i<plankH*1.4;i++){
+      var y0=py+R()*plankH,amp=1+R()*4,freq=.002+R()*.01,ph=R()*6;
+      x.beginPath();x.lineWidth=.5+R()*1.4;
+      var dark=R()<.6;x.strokeStyle=dark?'rgba(40,20,8,'+(.08+R()*.2)+')':'rgba(255,220,170,'+(.04+R()*.08)+')';
+      for(var xx=0;xx<=w;xx+=8){var yy=y0+Math.sin(xx*freq+ph)*amp+Math.sin(xx*freq*3.1)*amp*.3;xx?x.lineTo(xx,yy):x.moveTo(xx,yy)}
+      x.stroke();
+    }
+    if(R()<.7){var kx=R()*w,ky=py+plankH*(.3+R()*.4),kr=6+R()*12;
+      for(var k=0;k<7;k++){x.beginPath();x.ellipse(kx,ky,kr*(1+k*.6)*2.2,kr*(1+k*.35)*.6,0,0,Math.PI*2);x.strokeStyle='rgba(45,22,8,'+(.35-k*.04)+')';x.lineWidth=1.2;x.stroke()}
+      x.beginPath();x.ellipse(kx,ky,kr*1.6,kr*.45,0,0,Math.PI*2);x.fillStyle='rgba(50,24,8,.55)';x.fill()}
+    x.fillStyle='rgba(15,6,2,.7)';x.fillRect(0,py,w,2);
+    x.fillStyle='rgba(255,210,160,.08)';x.fillRect(0,py+2,w,1);
+  }
+  return c;
+}
+var boardWood=null;
+try{
+  document.body.style.backgroundImage='url('+wood(900,900,150,[70,42,26],7).toDataURL('image/jpeg',.85)+')';
+  boardWood=wood(700,700,700/3,[146,96,58],21);
+  document.getElementById('board').style.backgroundImage='url('+boardWood.toDataURL('image/jpeg',.85)+')';
+}catch(e){}
+
+/* ---------- vines ---------- */
+var cv=document.getElementById('vines'),board=document.getElementById('board');
+function leaf(x,cx,cy,ang,s){
+  x.save();x.translate(cx,cy);x.rotate(ang);
+  var g=x.createLinearGradient(0,-s*.4,0,s*.4);g.addColorStop(0,'#6f9a3d');g.addColorStop(1,'#2f5219');
+  x.beginPath();x.moveTo(0,0);x.bezierCurveTo(s*.35,-s*.45,s*.85,-s*.35,s*1.1,0);x.bezierCurveTo(s*.85,s*.35,s*.35,s*.45,0,0);
+  x.fillStyle=g;x.fill();x.strokeStyle='rgba(20,40,10,.6)';x.lineWidth=.8;x.stroke();
+  x.beginPath();x.moveTo(0,0);x.quadraticCurveTo(s*.55,-s*.04,s*1.0,0);x.strokeStyle='rgba(200,230,150,.45)';x.lineWidth=.7;x.stroke();
+  x.restore();
+}
+function tendril(x,cx,cy,ang,s,dir){
+  x.beginPath();x.moveTo(cx,cy);var a=ang,r=s,px=cx,py=cy;
+  for(var i=0;i<40;i++){a+=dir*.22;r*=.93;px+=Math.cos(a)*r*.35;py+=Math.sin(a)*r*.35;x.lineTo(px,py)}
+  x.strokeStyle='#4a6e24';x.lineWidth=1.1;x.stroke();
+}
+function flower(x,cx,cy,s,R){
+  var orange=R()<.45;
+  for(var i=0;i<5;i++){var a=i/5*Math.PI*2+R();x.beginPath();x.ellipse(cx+Math.cos(a)*s*.55,cy+Math.sin(a)*s*.55,s*.55,s*.32,a,0,Math.PI*2);x.fillStyle=orange?'#e08a3a':'#f1e3c0';x.fill();x.strokeStyle='rgba(120,70,30,.45)';x.lineWidth=.6;x.stroke()}
+  x.beginPath();x.arc(cx,cy,s*.3,0,Math.PI*2);x.fillStyle=orange?'#5a2e12':'#d9a23a';x.fill();
+}
+function paintVines(x,W,H,k){
+  k=k||1;var R=rng(42),small=W/k<620,inset=(small?14:24)*k;
+  var step=6*k,per=2*(W+H-4*inset);
+  function at(d){d=(d%per+per)%per;var w=W-2*inset,h=H-2*inset;
+    if(d<w)return[inset+d,inset,0];d-=w;if(d<h)return[W-inset,inset+d,Math.PI/2];d-=h;if(d<w)return[W-inset-d,H-inset,Math.PI];d-=w;return[inset,H-inset-d,-Math.PI/2]}
+  x.lineCap='round';x.lineJoin='round';
+  for(var s=0;s<2;s++){
+    var ph=s*Math.PI,wob=(small?5:8)*k;x.beginPath();var prev=null,leafs=[];
+    for(var d=0;d<=per;d+=step){
+      var p=at(d),n=p[2]+Math.PI/2,o=Math.sin(d/k*.03+ph)*wob+Math.sin(d/k*.011+s)*wob*.6;
+      var px=p[0]+Math.cos(n)*o,py=p[1]+Math.sin(n)*o;
+      d?x.lineTo(px,py):x.moveTo(px,py);
+      if((d/k)%(s?46:38)<6&&prev)leafs.push([px,py,Math.atan2(py-prev[1],px-prev[0]),(Math.floor(d/k/40)%2?1:-1)]);
+      prev=[px,py];
+    }
+    x.strokeStyle=s?'#3d5f1f':'#4c3a1c';x.lineWidth=(s?2.4:3.4)*k;
+    x.shadowColor='rgba(0,0,0,.35)';x.shadowBlur=3*k;x.shadowOffsetY=2*k;x.stroke();x.shadowColor='transparent';
+    leafs.forEach(function(l){var sz=((small?9:13)+R()*7)*k;leaf(x,l[0],l[1],l[2]+l[3]*(.7+R()*.6),sz);
+      if(R()<.18)tendril(x,l[0],l[1],l[2]-l[3]*1.2,(10+R()*6)*k,l[3]);
+      if(R()<.08)flower(x,l[0]+(R()-.5)*8*k,l[1]+(R()-.5)*8*k,(4+R()*3)*k,R)});
+  }
+  [[inset,inset,Math.PI/4],[W-inset,inset,3*Math.PI/4],[W-inset,H-inset,-3*Math.PI/4],[inset,H-inset,-Math.PI/4]].forEach(function(c){
+    for(var b=0;b<4;b++){
+      var a=c[2]+(R()-.5)*1.3,len=((small?30:55)+R()*40)*k,px=c[0],py=c[1];x.beginPath();x.moveTo(px,py);
+      for(var i=0;i<len;i+=4*k){a+=(R()-.5)*.25;px+=Math.cos(a)*4*k;py+=Math.sin(a)*4*k;x.lineTo(px,py);}
+      x.strokeStyle='#3d5f1f';x.lineWidth=1.8*k;x.stroke();
+      leaf(x,px,py,a,((small?10:15)+R()*6)*k);leaf(x,c[0]+(px-c[0])*.5,c[1]+(py-c[1])*.5,a+1.1,(10+R()*5)*k);
+      if(R()<.5)tendril(x,px,py,a+.5,9*k,R()<.5?1:-1);
+    }
+    flower(x,c[0]+Math.cos(c[2])*14*k,c[1]+Math.sin(c[2])*14*k,6*k,R);
+  });
+}
+function drawVines(){
+  var dpr=Math.min(window.devicePixelRatio||1,2),W=board.clientWidth,H=board.clientHeight;
+  cv.width=W*dpr;cv.height=H*dpr;var x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,H);
+  paintVines(x,W,H,1);
+}
+
+/* ---------- storage (IndexedDB, this browser only) ---------- */
+var db=null,mem=[];
+function openDB(){return new Promise(function(res){try{var r=indexedDB.open('grove-album',1);
+  r.onupgradeneeded=function(){r.result.createObjectStore('items',{keyPath:'id'});r.result.createObjectStore('meta')};
+  r.onsuccess=function(){db=r.result;res()};r.onerror=function(){res()}}catch(e){res()}})}
+function tx(mode,fn){return new Promise(function(res){if(!db){res(null);return}try{var t=db.transaction('items',mode),out=fn(t.objectStore('items'));t.oncomplete=function(){res(out&&out.result)};t.onerror=function(){res(null)}}catch(e){res(null)}})}
+function saveItem(it){if(it.src)return;var c={id:it.id,order:it.order,blob:it.blob||null};return tx('readwrite',function(s){return s.put(c)})}
+function delItem(id){return tx('readwrite',function(s){return s.delete(id)})}
+function loadItems(){return tx('readonly',function(s){return s.getAll()})}
+
+/* ---------- album ---------- */
+var grid=document.getElementById('grid'),items=[],urls={},page=0;
+var tilts=['-2.2deg','1.6deg','-.8deg','2.4deg','-1.6deg','.9deg'];
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function toast(t){var el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},2600)}
+function pageCount(){return Math.max(1,Math.ceil(items.length/PER))}
+function pageItems(p){return items.slice(p*PER,p*PER+PER)}
+
+function shrink(file){return new Promise(function(res){
+  var img=new Image(),u=URL.createObjectURL(file);
+  img.onload=function(){var m=1800,s=Math.min(1,m/Math.max(img.width,img.height));
+    if(s===1&&file.size<2.5e6){URL.revokeObjectURL(u);res(file);return}
+    var c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);
+    c.toBlob(function(b){res(b||file)},'image/jpeg',.88)};
+  img.onerror=function(){URL.revokeObjectURL(u);res(null)};img.src=u})}
+
+function srcOf(it){if(urls[it.id])return urls[it.id];if(it.src)return urls[it.id]=it.src;if(it.blob)return urls[it.id]=URL.createObjectURL(it.blob);return null}
+
+function render(dir){
+  items.sort(function(a,b){return a.order-b.order});
+  page=Math.min(page,pageCount()-1);
+  grid.innerHTML='';
+  pageItems(page).forEach(function(it,i){
+    var f=document.createElement('figure');f.className='slot';f.style.setProperty('--r',tilts[i%tilts.length]);f.tabIndex=0;
+    f.innerHTML='<span class="tack"></span><div class="ph"></div>'+(it.src?'':'<button class="x" type="button" aria-label="Remove">×</button>');
+    var ph=f.querySelector('.ph'),src=srcOf(it);
+    if(src){ph.innerHTML='<img alt="Album photo" loading="lazy">';ph.firstChild.src=src}
+    else ph.innerHTML='<div class="empty"><b>+ photo</b>Tap to tack one here</div>';
+    var xb=f.querySelector('.x');if(xb)xb.addEventListener('click',function(e){e.stopPropagation();remove(it)});
+    function act(){if(srcOf(it))openLB(it);else pickFor(it)}
+    f.addEventListener('click',act);
+    f.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}});
+    grid.appendChild(f);
+  });
+  if(dir){grid.style.setProperty('--dx',(dir*24)+'px');grid.classList.remove('turn');void grid.offsetWidth;grid.classList.add('turn')}
+  var n=pageCount();
+  document.getElementById('pnum').textContent=(page+1)+' / '+n;
+  document.getElementById('folio').textContent='page '+(page+1);
+  document.getElementById('prev').disabled=page===0;
+  document.getElementById('next').disabled=page>=n-1;
+  requestAnimationFrame(drawVines);
+}
+function go(d){var n=page+d;if(n<0||n>=pageCount())return;page=n;render(d)}
+document.getElementById('prev').addEventListener('click',function(){go(-1)});
+document.getElementById('next').addEventListener('click',function(){go(1)});
+
+function remove(it){
+  if(srcOf(it)&&!it._armed){it._armed=true;toast('Tap × again to remove this photo');setTimeout(function(){it._armed=false},2500);return}
+  if(urls[it.id]&&it.blob)URL.revokeObjectURL(urls[it.id]);delete urls[it.id];
+  items=items.filter(function(i){return i!==it});delItem(it.id);render();
+}
+function nextOrder(){return items.reduce(function(m,i){return Math.max(m,i.order)},0)+1}
+function addEmptyPage(){for(var i=0;i<PER;i++){var it={id:uid()+i,order:nextOrder()};items.push(it);saveItem(it)}}
+function addFiles(files){
+  files=[].slice.call(files).filter(function(f){return /^image\//.test(f.type)});if(!files.length)return;
+  Promise.all(files.map(shrink)).then(function(blobs){
+    var empties=items.filter(function(i){return !srcOf(i)}).sort(function(a,b){return a.order-b.order}),last=null,count=0;
+    blobs.forEach(function(b){if(!b)return;var it=empties.shift();
+      if(!it){it={id:uid(),order:nextOrder()};items.push(it)}
+      it.blob=b;saveItem(it);last=it;count++});
+    // pad the final page with empty frames so it stays a full spread
+    while(items.length%PER){var e={id:uid(),order:nextOrder()};items.push(e);saveItem(e)}
+    if(last){items.sort(function(a,b){return a.order-b.order});page=Math.floor(items.indexOf(last)/PER)}
+    render();toast(count+' photo'+(count===1?'':'s')+' added');
+  });
+}
+var pending=null,file1=document.getElementById('file1');
+function pickFor(it){pending=it;file1.value='';file1.click()}
+file1.addEventListener('change',function(){var f=file1.files[0];if(!f||!pending)return;var it=pending;
+  shrink(f).then(function(b){if(!b)return;it.blob=b;delete urls[it.id];saveItem(it);render()})});
+var file=document.getElementById('file');
+document.getElementById('addBtn').addEventListener('click',function(){file.value='';file.click()});
+file.addEventListener('change',function(){addFiles(file.files)});
+document.getElementById('pageBtn').addEventListener('click',function(){addEmptyPage();page=pageCount()-1;render(1);toast('Page '+(page+1)+' added')});
+
+if(!SITE){
+  ['dragenter','dragover'].forEach(function(t){board.addEventListener(t,function(e){e.preventDefault();board.classList.add('drag')})});
+  ['dragleave','drop'].forEach(function(t){board.addEventListener(t,function(e){e.preventDefault();board.classList.remove('drag')})});
+  board.addEventListener('drop',function(e){if(e.dataTransfer&&e.dataTransfer.files)addFiles(e.dataTransfer.files)});
+  document.addEventListener('paste',function(e){var f=[].slice.call((e.clipboardData||{}).files||[]);if(f.length)addFiles(f)});
+}
+
+/* lightbox */
+var lb=document.getElementById('lb'),cur=null;
+function filled(){return items.filter(function(i){return srcOf(i)})}
+function openLB(it){cur=it;document.getElementById('lbImg').src=srcOf(it);lb.hidden=false;document.getElementById('lbClose').focus()}
+function stepLB(d){var f=filled(),i=f.indexOf(cur);if(!f.length)return;openLB(f[(i+d+f.length)%f.length])}
+document.getElementById('lbClose').addEventListener('click',function(){lb.hidden=true});
+document.getElementById('lbPrev').addEventListener('click',function(){stepLB(-1)});
+document.getElementById('lbNext').addEventListener('click',function(){stepLB(1)});
+lb.addEventListener('click',function(e){if(e.target===lb)lb.hidden=true});
+document.addEventListener('keydown',function(e){
+  if(!lb.hidden){if(e.key==='Escape')lb.hidden=true;if(e.key==='ArrowRight')stepLB(1);if(e.key==='ArrowLeft')stepLB(-1);return}
+  if(e.target===document.body){if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1)}
+});
+
+/* ---------- download the page as a photo ---------- */
+function loadImg(src){return new Promise(function(res){var i=new Image();i.onload=function(){res(i)};i.onerror=function(){res(null)};i.src=src})}
+function exportPage(){
+  var photos=pageItems(page).filter(function(i){return srcOf(i)});
+  if(!photos.length){toast('Add some photos to this page first');return Promise.resolve(null)}
+  var fontsReady=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
+  return Promise.all([fontsReady].concat(photos.map(function(p){return loadImg(srcOf(p))}))).then(function(r){
+    var imgs=r.slice(1),k=2,cols=3,rows=Math.ceil(photos.length/cols);
+    var W=1040*k,padX=80*k,gap=44*k,top=250*k,slot=(W-2*padX-2*gap)/cols,fh=slot+30*k;
+    var H=top+rows*fh+(rows-1)*gap+150*k;
+    var c=document.createElement('canvas');c.width=W;c.height=H;var x=c.getContext('2d');
+    // board
+    x.fillStyle='#8a5a36';x.fillRect(0,0,W,H);
+    if(boardWood){x.save();x.scale(k*1.2,k*1.2);x.fillStyle=x.createPattern(boardWood,'repeat');x.fillRect(0,0,W/(k*1.2),H/(k*1.2));x.restore()}
+    var vg=x.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(30,15,5,0)');vg.addColorStop(1,'rgba(30,15,5,.45)');x.fillStyle=vg;x.fillRect(0,0,W,H);
+    x.lineWidth=12*k;x.strokeStyle='#5a3720';x.strokeRect(6*k,6*k,W-12*k,H-12*k);
+    x.lineWidth=2*k;x.strokeStyle='rgba(0,0,0,.4)';x.strokeRect(18*k,18*k,W-36*k,H-36*k);
+    x.strokeStyle='rgba(255,220,170,.18)';x.strokeRect(19.5*k,19.5*k,W-39*k,H-39*k);
+    // title
+    x.textAlign='center';x.textBaseline='alphabetic';
+    x.font='400 '+(64*k)+'px "Fredericka the Great", Georgia, serif';
+    x.fillStyle='rgba(255,215,160,.35)';x.fillText('Let It Grow',W/2,140*k+1.5*k);
+    x.fillStyle='#2a160b';x.fillText('Let It Grow',W/2,140*k);
+    x.font='600 '+(17*k)+'px Bitter, Georgia, serif';
+    try{x.letterSpacing=(5*k)+'px'}catch(e){}
+    x.fillStyle='rgba(0,0,0,.45)';x.fillText('HALLOWEEN 2026',W/2+2.5*k,186*k+1.5*k);
+    x.fillStyle='#d8772a';x.fillText('HALLOWEEN 2026',W/2+2.5*k,186*k);
+    try{x.letterSpacing='0px'}catch(e){}
+    // polaroids
+    var rowW=function(n){return n*slot+(n-1)*gap};
+    photos.forEach(function(p,i){
+      var row=Math.floor(i/cols),col=i%cols,inRow=Math.min(cols,photos.length-row*cols);
+      var left=(W-rowW(inRow))/2,cx=left+col*(slot+gap)+slot/2,cy=top+row*(fh+gap)+fh/2;
+      var ang=parseFloat(tilts[i%tilts.length])*Math.PI/180,img=imgs[i];
+      x.save();x.translate(cx,cy);x.rotate(ang);
+      x.shadowColor='rgba(25,10,0,.5)';x.shadowBlur=18*k;x.shadowOffsetY=8*k;
+      x.fillStyle='#f6efe1';x.fillRect(-slot/2,-fh/2,slot,fh);x.shadowColor='transparent';
+      var ins=10*k,sz=slot-2*ins;
+      x.fillStyle='#d8cdb8';x.fillRect(-slot/2+ins,-fh/2+ins,sz,sz);
+      if(img){var s=Math.max(sz/img.width,sz/img.height),sw=sz/s,sh=sz/s;
+        x.drawImage(img,(img.width-sw)/2,(img.height-sh)/2,sw,sh,-slot/2+ins,-fh/2+ins,sz,sz)}
+      var tg=x.createRadialGradient(-3*k,-fh/2-3*k,1,0,-fh/2,9*k);tg.addColorStop(0,'#fff3c4');tg.addColorStop(.45,'#c9a04a');tg.addColorStop(1,'#6b4a14');
+      x.shadowColor='rgba(0,0,0,.5)';x.shadowBlur=3*k;x.shadowOffsetY=2*k;
+      x.beginPath();x.arc(0,-fh/2+1*k,8*k,0,Math.PI*2);x.fillStyle=tg;x.fill();
+      x.restore();
+    });
+    x.shadowColor='transparent';
+    x.font='700 '+(22*k)+'px Caveat, "Segoe Print", cursive';x.fillStyle='#3a2212';x.textAlign='center';
+    x.fillText('page '+(page+1),W/2,H-60*k);
+    paintVines(x,W,H,k);
+    return new Promise(function(res){c.toBlob(function(b){res(b)},'image/png')});
+  });
+}
+var dlBtn=document.getElementById('dlBtn'),dlReady=(window.claude&&window.claude.use)?window.claude.use('downloads').catch(function(){return null}):Promise.resolve(null);
+dlBtn.addEventListener('click',function(){
+  dlBtn.disabled=true;var old=dlBtn.textContent;dlBtn.textContent='Making your photo…';var dlApi=null;
+  Promise.all([exportPage(),dlReady]).then(function(r){var blob=r[0];dlApi=r[1];
+    if(!blob)return;
+    var name='let-it-grow-halloween-2026-page-'+(page+1)+'.png';
+    if(dlApi){return dlApi.save({filename:name,data:blob}).then(function(r){if(r&&r.status==='saved')toast('Saved '+name)},function(e){
+      if(e&&e.code==='declined')return;toast('That download didn’t go through. Try again in a moment.')})}
+    var a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(u)},4000);toast('Saved '+name);
+  }).then(function(){dlBtn.disabled=false;dlBtn.textContent=old},function(){dlBtn.disabled=false;dlBtn.textContent=old;toast('Couldn’t make the photo. Try again.')});
+});
+
+var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(drawVines,120)});
+if(window.ResizeObserver)new ResizeObserver(function(){clearTimeout(rt);rt=setTimeout(drawVines,60)}).observe(board);
+
+/* boot */
+drawVines();
+var baked=PHOTOS.map(function(src,i){return{id:'site'+i,src:src,order:-100000+i}});
+if(SITE){items=baked;render();return}
+openDB().then(loadItems).then(function(r){
+  items=baked.concat(r||[]);
+  if(items.length<PER*5){while(items.length<PER*5){var it={id:uid()+items.length,order:nextOrder()};items.push(it);saveItem(it)}}
+  while(items.length%PER){var e={id:uid(),order:nextOrder()};items.push(e);saveItem(e)}
+  render();
+});
+})();
+</script>
+
+</body>
+</html>
