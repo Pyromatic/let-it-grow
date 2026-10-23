@@ -444,6 +444,11 @@ function del(paths){
   return fetch(BASE+'/object/'+BUCKET,{method:'DELETE',headers:hdrs({'Content-Type':'application/json'}),body:JSON.stringify({prefixes:paths})})
   .then(function(r){if(!r.ok)throw new Error('delete '+r.status)});
 }
+function whyFailed(e,lead){var t=(e&&e.body)||'';
+  if(/mime|content.?type/i.test(t))return lead+' Storage doesn’t accept album settings yet. Run SUPABASE-UPDATE-2.sql in Supabase.';
+  if(/row-level|policy|Unauthorized|403/i.test(t))return lead+' Storage isn’t allowing changes yet. Run SUPABASE-UPDATE-2.sql in Supabase.';
+  if(t)return lead+' Storage said: '+t.replace(/\s+/g,' ').slice(0,140);
+  return lead+' Check your connection and try again.'}
 function getMeta(prefix){
   return fetch(pub(prefix+'_meta.json',Date.now()),{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).catch(function(){return null});
 }
@@ -616,7 +621,7 @@ function buildThemePanel(){var p=$('themePanel');if(p.dataset.built)return;p.dat
   applyTheme()}
 function chooseTheme(id){if(!cur||cur.theme===id)return;var c=cur,prev=c.theme;c.theme=id;
   c.meta=Object.assign({},c.meta||{},{title:c.title,sub:c.sub,theme:id,created:(c.meta&&c.meta.created)||Date.now()});lastSig=sig(c);applyTheme();render();
-  saveMeta(c.prefix,c.meta).then(function(){toast(T(id).name+' theme saved for everyone')},function(){if(cur===c){c.theme=prev;c.meta.theme=prev;lastSig=sig(c);applyTheme();render()}toast('Couldn’t save the theme. Try again.')})}
+  saveMeta(c.prefix,c.meta).then(function(){toast(T(id).name+' theme saved for everyone')},function(e){if(cur===c){c.theme=prev;c.meta.theme=prev;lastSig=sig(c);applyTheme();render()}toast(whyFailed(e,'Couldn’t save the theme.'),8000)})}
 $('themeBtn').addEventListener('click',function(){var p=$('themePanel'),open=p.hidden;if(open)buildThemePanel();p.hidden=!open;$('themeBtn').setAttribute('aria-expanded',open?'true':'false')});
 function refresh(){if(!cur||busy)return Promise.resolve();var id=cur.id;
   return loadCollection(id).then(function(c){if(!cur||cur.id!==id)return;var s=sig(c);if(s===lastSig)return;
@@ -648,7 +653,7 @@ function titleBlock(small){
         if(p[1]==='title'&&!v){el.textContent=cur.title;return}
         if(v===cur[p[1]])return;cur[p[1]]=v;el.textContent=v;
         var m=Object.assign({},cur.meta||{},{title:cur.title,sub:cur.sub,theme:cur.theme,created:(cur.meta&&cur.meta.created)||Date.now()});cur.meta=m;lastSig=sig(cur);
-        saveMeta(cur.prefix,m).then(function(){toast('Saved')},function(){toast('Couldn’t save the new name. Try again.')});
+        saveMeta(cur.prefix,m).then(function(){toast('Saved')},function(e){toast(whyFailed(e,'Couldn’t save the new name.'),8000)});
         requestAnimationFrame(drawVines)});
     });
   }
