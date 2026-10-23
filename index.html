@@ -6,7 +6,7 @@
 <title>Let It Grow</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&family=Caveat:wght@500;700&family=Bitter:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&family=Caveat:wght@500;700&family=Bitter:wght@400;600&family=Playfair+Display:wght@700&family=Cinzel:wght@600&family=Creepster&family=Pacifico&display=swap">
 <style>
 /* Layout: dark plank floor. Home is a shelf of small carved albums; opening one shows a carved board whose first page is the cover (one big taped 16:9 photo under the title), then pages of four taped 16:9 prints. Vines grow around every board. Single committed look. */
 :root{
@@ -98,6 +98,23 @@ body{
 .title [contenteditable="true"]:hover,.title [contenteditable="true"]:focus{background:rgba(255,230,190,.14)}
 .yr{display:block;margin-top:8px;font-family:var(--f-ui);font-weight:600;font-size:clamp(13px,1.6vw,16px);letter-spacing:.32em;text-transform:uppercase;color:var(--t-sub,var(--pumpkin));text-shadow:0 1px 0 var(--t-subsh,rgba(0,0,0,.45));min-height:1.2em}
 .title.small .yr{font-size:12px;margin-top:4px}
+.title .t{display:inline-block}
+.yr.script,.book-sub.script{text-transform:none;letter-spacing:.02em;font-size:clamp(18px,2.4vw,24px)}
+.title.small .yr.script{font-size:17px}
+.book-sub.script{font-size:17px;margin-top:-6px}
+.fontbtn{position:absolute;z-index:6;width:38px;height:38px;border-radius:50%;border:1px solid #7a5a1d;cursor:pointer;
+  background:linear-gradient(#e7c97f,var(--brass));color:#2b1a10;font:700 16px "Playfair Display",Georgia,serif;
+  box-shadow:0 3px 10px rgba(0,0,0,.45);display:grid;place-items:center;padding:0}
+.fontbtn:hover{filter:brightness(1.07)}
+.fontmenu{position:absolute;z-index:7;width:240px;max-width:calc(100% - 16px);background:#2b1a10;border:1px solid #a07a4a;border-radius:10px;padding:6px;
+  display:flex;flex-direction:column;gap:2px;box-shadow:0 12px 30px rgba(0,0,0,.55)}
+.fontmenu .fm-h{font:600 11px var(--f-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:6px 10px 4px}
+.fontmenu button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;background:none;border:0;border-radius:6px;
+  color:var(--cream);padding:7px 10px;font-size:21px;line-height:1.25;cursor:pointer;text-align:left}
+.fontmenu button:hover{background:rgba(255,255,255,.08)}
+.fontmenu button small{font:600 11px var(--f-ui);letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+.fontmenu button[aria-checked="true"]{background:rgba(201,160,74,.18)}
+.fontmenu button[aria-checked="true"] small::before{content:"✓ ";color:var(--brass)}
 .folio{position:absolute;z-index:4;left:0;right:0;bottom:clamp(30px,4vw,44px);text-align:center;font-family:var(--f-hand);font-weight:700;font-size:22px;color:var(--t-folio,#3a2212)}
 
 .grid{position:relative;z-index:2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:46px 40px;padding-top:8px}
@@ -193,6 +210,8 @@ body{
 
   <section class="board" id="board">
     <canvas id="vines" aria-hidden="true"></canvas>
+    <button class="fontbtn" id="fontBtn" type="button" aria-label="Change font" aria-haspopup="menu" aria-expanded="false" hidden>Aa</button>
+    <div class="fontmenu" id="fontMenu" role="menu" hidden></div>
     <div id="pageBody"></div>
     <div class="folio" id="folio"></div>
   </section>
@@ -480,7 +499,7 @@ function loadCollection(id){
   var prefix=prefixOf(id);
   return Promise.all([list(id==='main'?'':id),getMeta(prefix)]).then(function(r){
     var p=parseRows(prefix,r[0]),m=r[1]||(id==='main'?MAIN_META:{title:'Untitled album',sub:''});
-    return{id:id,prefix:prefix,title:m.title||'Untitled album',sub:m.sub||'',theme:themeId(m.theme),meta:m,media:p.media,cover:p.cover,rootRows:r[0]};
+    return{id:id,prefix:prefix,title:m.title||'Untitled album',sub:m.sub||'',theme:themeId(m.theme),fonts:fontsOf(m),meta:m,media:p.media,cover:p.cover,rootRows:r[0]};
   });
 }
 
@@ -563,8 +582,8 @@ function showHome(){
     var folders=rows.filter(function(o){return !o.id&&/^c-/.test(o.name)}).map(function(o){return o.name});
     var main=parseRows('',rows);
     return Promise.all([getMeta('')].concat(folders.map(function(f){return Promise.all([list(f),getMeta(f+'/')])}))).then(function(r){
-      var mm=r[0]||MAIN_META,cols=[{id:'main',title:mm.title,sub:mm.sub,theme:themeId(mm.theme),media:main.media,cover:main.cover}];
-      folders.forEach(function(f,i){var p=parseRows(f+'/',r[i+1][0]),m=r[i+1][1]||{};cols.push({id:f,title:m.title||'Untitled album',sub:m.sub||'',theme:themeId(m.theme),media:p.media,cover:p.cover})});
+      var mm=r[0]||MAIN_META,cols=[{id:'main',title:mm.title,sub:mm.sub,theme:themeId(mm.theme),fonts:fontsOf(mm),media:main.media,cover:main.cover}];
+      folders.forEach(function(f,i){var p=parseRows(f+'/',r[i+1][0]),m=r[i+1][1]||{};cols.push({id:f,title:m.title||'Untitled album',sub:m.sub||'',theme:themeId(m.theme),fonts:fontsOf(m),media:p.media,cover:p.cover})});
       renderShelf(cols);
     });
   }).catch(function(){
@@ -583,7 +602,7 @@ function renderShelf(cols){
     var first=c.cover?{src:c.cover}:c.media.filter(function(m){return !m.video})[0];
     a.innerHTML='<div class="book-board"><canvas aria-hidden="true"></canvas><div class="book-photo"><span class="tape" style="--t:'+tapes[i%tapes.length]+'"></span><div class="ph">'+
       (first?'<img alt="" loading="lazy" src="'+esc(first.src)+'">':'<div class="empty"><b>no cover yet</b></div>')+'</div></div>'+
-      '<div class="book-title">'+esc(c.title)+'</div>'+(c.sub?'<div class="book-sub">'+esc(c.sub)+'</div>':'')+'</div>'+
+      '<div class="book-title" style="'+fontCss(c.fonts.title,'title')+'">'+esc(c.title)+'</div>'+(c.sub?'<div class="book-sub'+(F(c.fonts.sub).script?' script':'')+'" style="'+fontCss(c.fonts.sub,'sub')+'">'+esc(c.sub)+'</div>':'')+'</div>'+
       '<div class="book-count">'+countLine(c.media)+'</div>';
     themeVars(a,c.theme);a.dataset.theme=c.theme;var bb=a.querySelector('.book-board');try{bb.style.backgroundImage='url('+woodFor(c.theme,'board').url+')'}catch(e){}
     shelf.appendChild(a);
@@ -617,7 +636,7 @@ function openAlbum(id){
   return loadCollection(id).then(function(c){cur=c;document.title=c.title+' · Let It Grow';lastSig=sig(c);render()},function(){
     $('pageBody').innerHTML='<div class="loading">Couldn’t open this album. Check your connection and reload.</div>'});
 }
-function sig(c){return c.media.map(function(m){return m.path}).join('|')+'#'+c.cover+'#'+c.title+'#'+c.sub+'#'+c.theme}
+function sig(c){return c.media.map(function(m){return m.path}).join('|')+'#'+c.cover+'#'+c.title+'#'+c.sub+'#'+c.theme+'#'+c.fonts.title+c.fonts.sub}
 function applyTheme(){if(!cur)return;var id=cur.theme;themeVars($('album'),id);setPageWood(id);
   try{$('board').style.backgroundImage='url('+woodFor(id,'board').url+')'}catch(e){}
   $('themeName').textContent=T(id).name;
@@ -629,7 +648,7 @@ function buildThemePanel(){var p=$('themePanel');if(p.dataset.built)return;p.dat
     b.addEventListener('click',function(){chooseTheme(id)});p.appendChild(b)});
   applyTheme()}
 function chooseTheme(id){if(!cur||cur.theme===id)return;var c=cur,prev=c.theme;c.theme=id;
-  c.meta=Object.assign({},c.meta||{},{title:c.title,sub:c.sub,theme:id,created:(c.meta&&c.meta.created)||Date.now()});lastSig=sig(c);applyTheme();render();
+  c.meta=Object.assign({},c.meta||{},{title:c.title,sub:c.sub,theme:id,fonts:c.fonts,created:(c.meta&&c.meta.created)||Date.now()});lastSig=sig(c);applyTheme();render();
   saveMeta(c.prefix,c.meta).then(function(){toast(T(id).name+' theme saved for everyone')},function(e){if(cur===c){c.theme=prev;c.meta.theme=prev;lastSig=sig(c);applyTheme();render()}toast(whyFailed(e,'Couldn’t save the theme.'),8000)})}
 $('themeBtn').addEventListener('click',function(){var p=$('themePanel'),open=p.hidden;if(open)buildThemePanel();p.hidden=!open;$('themeBtn').setAttribute('aria-expanded',open?'true':'false')});
 function refresh(){if(!cur||busy)return Promise.resolve();var id=cur.id;
@@ -642,7 +661,7 @@ function frames(){var f=cur.media.slice();while(f.length<photoPages()*PER)f.push
 function render(dir){
   if(!cur)return;
   page=Math.min(page,pageCount()-1);
-  applyTheme();
+  applyTheme();hideFontTool();
   var body=$('pageBody');body.innerHTML='';
   if(page===0)renderCover(body);else renderGrid(body);
   if(dir){body.style.setProperty('--dx',(dir*24)+'px');body.classList.remove('turn');void body.offsetWidth;body.classList.add('turn')}
@@ -651,9 +670,67 @@ function render(dir){
   $('prev').disabled=page===0;$('next').disabled=page>=pageCount()-1;
   requestAnimationFrame(drawVines);
 }
+/* ---------- title fonts ---------- */
+var FONTS={
+  carved:{name:'Carved',fam:'"Fredericka the Great","Rockwell",Georgia,serif',w:400},
+  slab:{name:'Slab',fam:'Bitter,Georgia,serif',w:600},
+  classic:{name:'Classic',fam:'"Playfair Display",Georgia,serif',w:700},
+  engraved:{name:'Engraved',fam:'Cinzel,"Trajan Pro",Georgia,serif',w:600,scale:.9},
+  hand:{name:'Handwritten',fam:'Caveat,"Segoe Print",cursive',w:700,scale:1.2,script:true},
+  spooky:{name:'Spooky',fam:'Creepster,Impact,fantasy',w:400,scale:1.05},
+  retro:{name:'Retro',fam:'Pacifico,"Brush Script MT",cursive',w:400,scale:.85,script:true}
+};
+var FONT_ORDER=['carved','slab','classic','engraved','hand','spooky','retro'];
+var FONT_DEFAULT={title:'carved',sub:'slab'};
+function F(id){return FONTS[id]||FONTS.carved}
+function fontsOf(m){var f=(m&&m.fonts)||{};return{title:FONTS[f.title]?f.title:FONT_DEFAULT.title,sub:FONTS[f.sub]?f.sub:FONT_DEFAULT.sub}}
+function fontCss(id,role){var f=F(id);return'font-family:'+esc(f.fam).replace(/&quot;/g,"'")+';font-weight:'+f.w+(role==='title'&&f.scale?';font-size:'+(26*f.scale)+'px':'')}
+function styleFonts(h){if(!cur)return;var t=h.querySelector('.t'),y=h.querySelector('.yr'),ft=F(cur.fonts.title),fs=F(cur.fonts.sub);
+  t.style.fontFamily=ft.fam;t.style.fontWeight=ft.w;t.style.fontSize=(ft.scale||1)+'em';
+  y.style.fontFamily=fs.fam;y.style.fontWeight=fs.w;y.classList.toggle('script',!!fs.script)}
+var fontBtn=$('fontBtn'),fontMenu=$('fontMenu'),fontTarget=null;
+function hideFontTool(){fontBtn.hidden=true;fontMenu.hidden=true;fontBtn.setAttribute('aria-expanded','false');fontTarget=null}
+function showFontTool(el,role){
+  fontTarget={el:el,role:role};fontMenu.hidden=true;fontBtn.setAttribute('aria-expanded','false');
+  fontBtn.setAttribute('aria-label',role==='title'?'Change title font':'Change subtitle font');
+  var b=board.getBoundingClientRect(),r=el.getBoundingClientRect();
+  var w=r.width||40,left=Math.min(b.width-48,r.left-b.left+w+8),top=r.top-b.top+r.height/2-19;
+  if(left<r.right-b.left&&r.left-b.left>56)left=r.left-b.left-46;
+  fontBtn.style.left=Math.max(8,left)+'px';fontBtn.style.top=Math.max(8,top)+'px';fontBtn.hidden=false;
+}
+function openFontMenu(){if(!fontTarget||!cur)return;var role=fontTarget.role,curId=cur.fonts[role];
+  fontMenu.innerHTML='<div class="fm-h">'+(role==='title'?'Title font':'Subtitle font')+'</div>';
+  FONT_ORDER.forEach(function(id){var f=FONTS[id],b=document.createElement('button');b.type='button';b.setAttribute('role','menuitemradio');
+    b.setAttribute('aria-checked',id===curId?'true':'false');
+    b.innerHTML='<span style="font-family:'+esc(f.fam).replace(/&quot;/g,"'")+';font-weight:'+f.w+'">'+esc(f.name)+'</span><small>'+(id===FONT_DEFAULT[role]?'Original':'')+'</small>';
+    b.addEventListener('click',function(){chooseFont(role,id)});fontMenu.appendChild(b)});
+  fontMenu.hidden=false;fontBtn.setAttribute('aria-expanded','true');
+  var bw=board.clientWidth,bl=parseFloat(fontBtn.style.left),bt=parseFloat(fontBtn.style.top),mw=fontMenu.offsetWidth;
+  fontMenu.style.left=Math.max(8,Math.min(bw-mw-8,bl+19-mw/2))+'px';fontMenu.style.top=(bt+46)+'px';
+  var first=fontMenu.querySelector('[aria-checked="true"]');if(first)first.focus();
+}
+function chooseFont(role,id){if(!cur)return;var c=cur,prev=c.fonts[role];fontMenu.hidden=true;fontBtn.setAttribute('aria-expanded','false');
+  if(prev===id)return;c.fonts=Object.assign({},c.fonts);c.fonts[role]=id;
+  c.meta=Object.assign({},c.meta||{},{title:c.title,sub:c.sub,theme:c.theme,fonts:c.fonts,created:(c.meta&&c.meta.created)||Date.now()});lastSig=sig(c);
+  var h=$('pageBody').querySelector('.title');if(h)styleFonts(h);
+  if(fontTarget)requestAnimationFrame(function(){if(fontTarget)showFontTool(fontTarget.el,fontTarget.role)});
+  requestAnimationFrame(drawVines);
+  saveMeta(c.prefix,c.meta).then(function(){toast(F(id).name+' font saved for everyone')},function(e){
+    if(cur===c){c.fonts=Object.assign({},c.fonts);c.fonts[role]=prev;c.meta.fonts=c.fonts;lastSig=sig(c);var h2=$('pageBody').querySelector('.title');if(h2)styleFonts(h2)}
+    toast(whyFailed(e,'Couldn’t save the font.'),8000)});
+}
+fontBtn.addEventListener('mousedown',function(e){e.preventDefault()});
+fontBtn.addEventListener('click',function(e){e.stopPropagation();if(fontMenu.hidden)openFontMenu();else{fontMenu.hidden=true;fontBtn.setAttribute('aria-expanded','false')}});
+fontMenu.addEventListener('mousedown',function(e){e.preventDefault()});
+document.addEventListener('click',function(e){if(fontBtn.hidden)return;var t=e.target;
+  if(fontBtn.contains(t)||fontMenu.contains(t)||(t.closest&&t.closest('.title .t, .title .yr')))return;hideFontTool()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!fontBtn.hidden){if(!fontMenu.hidden){fontMenu.hidden=true;fontBtn.focus()}else hideFontTool()}});
 function titleBlock(small){
   var h=document.createElement('h1');h.className='title'+(small?' small':'');
   h.innerHTML='<span class="t">'+esc(cur.title)+'</span><span class="yr">'+esc(cur.sub)+'</span>';
+  styleFonts(h);
+  [['.t','title'],['.yr','sub']].forEach(function(p){var el=h.querySelector(p[0]);
+    el.addEventListener('click',function(){showFontTool(el,p[1])});el.addEventListener('focus',function(){showFontTool(el,p[1])})});
   if(!small){
     [['.t','title'],['.yr','sub']].forEach(function(p){var el=h.querySelector(p[0]);el.contentEditable='true';el.spellcheck=false;
       el.title='Tap to rename';el.setAttribute('role','textbox');el.setAttribute('aria-label',p[1]==='title'?'Album title':'Album subtitle');
@@ -661,7 +738,7 @@ function titleBlock(small){
       el.addEventListener('blur',function(){var v=el.textContent.replace(/\s+/g,' ').trim().slice(0,p[1]==='title'?60:40);
         if(p[1]==='title'&&!v){el.textContent=cur.title;return}
         if(v===cur[p[1]])return;cur[p[1]]=v;el.textContent=v;
-        var m=Object.assign({},cur.meta||{},{title:cur.title,sub:cur.sub,theme:cur.theme,created:(cur.meta&&cur.meta.created)||Date.now()});cur.meta=m;lastSig=sig(cur);
+        var m=Object.assign({},cur.meta||{},{title:cur.title,sub:cur.sub,theme:cur.theme,fonts:cur.fonts,created:(cur.meta&&cur.meta.created)||Date.now()});cur.meta=m;lastSig=sig(cur);
         saveMeta(cur.prefix,m).then(function(){toast('Saved')},function(e){toast(whyFailed(e,'Couldn’t save the new name.'),8000)});
         requestAnimationFrame(drawVines)});
     });
@@ -788,7 +865,8 @@ function exportPage(){
   var isCover=page===0,start=(page-1)*PER,items=isCover?[]:frames().slice(start,start+PER).filter(Boolean);
   if(isCover&&!cur.cover){toast('Add a cover photo first');return Promise.resolve(null)}
   if(!isCover&&!items.length){toast('Add some photos to this page first');return Promise.resolve(null)}
-  var fontsReady=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
+  var ftT=F(cur.fonts.title),ftS=F(cur.fonts.sub);
+  var fontsReady=document.fonts&&document.fonts.load?Promise.all([document.fonts.load(ftT.w+' 40px '+ftT.fam,cur.title),document.fonts.load(ftS.w+' 20px '+ftS.fam,cur.sub||'A'),document.fonts.load('700 20px Caveat','page')]).catch(function(){}):Promise.resolve();
   var loads=isCover?[loadImg(cur.cover)]:items.map(function(m){return m.video?loadFrame(m.src):loadImg(m.src)});
   return Promise.all([fontsReady].concat(loads)).then(function(r){
     var imgs=r.slice(1),k=2,W=1040*k,cols=2,rows=Math.ceil(items.length/cols),padX=90*k,gap=50*k,ins=9*k;
@@ -804,11 +882,12 @@ function exportPage(){
     x.strokeStyle='rgba(255,220,170,.18)';x.strokeRect(19.5*k,19.5*k,W-39*k,H-39*k);
     x.textAlign='center';x.textBaseline='alphabetic';
     var ts=isCover?64:34,ty=isCover?140*k:110*k;
-    x.font='400 '+(ts*k)+'px "Fredericka the Great", Georgia, serif';
+    x.font=ftT.w+' '+(ts*k*(ftT.scale||1))+'px '+ftT.fam;
     var title=cur.title;while(x.measureText(title).width>W-2*padX&&title.length>4)title=title.slice(0,-2)+'…';
     x.fillStyle=expT.glow;x.fillText(title,W/2,ty+1.5*k);x.fillStyle=expT.ink;x.fillText(title,W/2,ty);
-    if(cur.sub){x.font='600 '+((isCover?17:12)*k)+'px Bitter, Georgia, serif';try{x.letterSpacing=((isCover?5:3.5)*k)+'px'}catch(e){}
-      var sy=ty+(isCover?46:30)*k;x.fillStyle=expT.subShadow;x.fillText(cur.sub.toUpperCase(),W/2+2.5*k,sy+1.5*k);x.fillStyle=expT.sub;x.fillText(cur.sub.toUpperCase(),W/2+2.5*k,sy);
+    if(cur.sub){var scr=!!ftS.script,subTxt=scr?cur.sub:cur.sub.toUpperCase(),off=scr?0:2.5*k;
+      x.font=ftS.w+' '+((isCover?(scr?26:17):(scr?18:12))*k)+'px '+ftS.fam;try{x.letterSpacing=(scr?.5*k:(isCover?5:3.5)*k)+'px'}catch(e){}
+      var sy=ty+(isCover?(scr?52:46):(scr?34:30))*k;x.fillStyle=expT.subShadow;x.fillText(subTxt,W/2+off,sy+1.5*k);x.fillStyle=expT.sub;x.fillText(subTxt,W/2+off,sy);
       try{x.letterSpacing='0px'}catch(e){}}
     if(isCover){
       print(x,k,W/2,top+hph/2+12*k,hpw,hph,12*k,-.6*Math.PI/180,imgs[0],function(w,h){
