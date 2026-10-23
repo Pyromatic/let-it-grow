@@ -133,6 +133,7 @@ body{
 
 .hero{position:relative;z-index:2;max-width:820px;margin:6px auto 0;--r:-.6deg;padding:12px}
 .hero-actions{position:relative;z-index:4;display:flex;justify-content:center;margin-top:30px}
+.hero-actions .btn.ghost{background:rgba(30,20,12,.8);border-color:rgba(30,20,12,.8)}
 
 .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;background:rgba(0,0,0,.3);border:1px solid #6f5034;border-radius:10px;padding:14px}
 .themes h2{grid-column:1/-1;margin:0;font-family:var(--f-display);font-weight:400;font-size:22px;color:var(--cream)}
@@ -244,9 +245,12 @@ var THEMES={
   frost:{subShadow:'rgba(255,255,255,.6)',name:'First Frost',plank:[58,66,76],board:[156,168,178],edge:'#566676',ink:'#16232f',glow:'rgba(255,255,255,.5)',sub:'#2a6a98',folio:'#22323f',tape:'rgba(240,244,248,.82)',paper:'#f7f9fb',
     stems:['#3c4a56','#5b6b78'],leaf:'needle',leaves:[['#4a7a68','#24483c'],['#5c8a7a','#2e5446']],vein:'',tendril:'#6b7c88',bloom:'snow',bloomRate:.16,extra:'frost'},
   blossom:{subShadow:'rgba(255,244,234,.65)',name:'Blossom',plank:[88,58,46],board:[204,170,138],edge:'#8c6448',ink:'#3a1e16',glow:'rgba(255,240,225,.5)',sub:'#c0406e',folio:'#5a2e24',tape:'rgba(252,226,232,.82)',paper:'#fffaf6',
-    stems:['#4a2e22','#6a4434'],leaf:'leaf',leaves:[['#9cc070','#56803a']],vein:'rgba(230,250,200,.5)',tendril:'#6a8a44',bloom:'cherry',bloomRate:.32}
+    stems:['#4a2e22','#6a4434'],leaf:'leaf',leaves:[['#9cc070','#56803a']],vein:'rgba(230,250,200,.5)',tendril:'#6a8a44',bloom:'cherry',bloomRate:.32},
+  white:{subShadow:'rgba(255,255,255,.7)',name:'White',plain:true,plank:[54,52,50],board:[244,242,238],edge:'#d6d1c8',ink:'#1f1f1f',glow:'rgba(255,255,255,.7)',sub:'#7a7368',folio:'#6a645a',tape:'rgba(214,208,196,.8)',paper:'#ffffff',line:'rgba(60,55,48,.35)',leaves:[['#d6d1c8','#d6d1c8']]},
+  blue:{subShadow:'rgba(0,0,0,.35)',name:'Blue',plain:true,plank:[22,34,58],board:[46,92,168],edge:'#1f3f78',ink:'#ffffff',glow:'rgba(0,0,0,.35)',sub:'#cfe0ff',folio:'#dce8ff',tape:'rgba(236,240,248,.75)',paper:'#ffffff',line:'rgba(255,255,255,.55)',leaves:[['#ffffff','#ffffff']]},
+  red:{subShadow:'rgba(0,0,0,.35)',name:'Red',plain:true,plank:[48,18,20],board:[178,38,44],edge:'#7a161c',ink:'#ffffff',glow:'rgba(0,0,0,.35)',sub:'#ffd8cf',folio:'#ffe4de',tape:'rgba(248,236,226,.75)',paper:'#ffffff',line:'rgba(255,255,255,.55)',leaves:[['#ffffff','#ffffff']]}
 };
-var THEME_ORDER=['grove','haunted','harvest','moonlit','frost','blossom'];
+var THEME_ORDER=['grove','haunted','harvest','moonlit','frost','blossom','white','blue','red'];
 function T(id){return THEMES[id]||THEMES.grove}
 function themeId(id){return THEMES[id]?id:'grove'}
 
@@ -274,8 +278,12 @@ function wood(w,h,plankH,base,seed){
   return c;
 }
 var woodCache={};
+function painted(w,h,base,seed){var R=rng(seed),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');
+  x.fillStyle='rgb('+base.join(',')+')';x.fillRect(0,0,w,h);
+  for(var i=0;i<140;i++){var y=R()*h;x.fillStyle=R()<.5?'rgba(0,0,0,'+(.012+R()*.02)+')':'rgba(255,255,255,'+(.015+R()*.025)+')';x.fillRect(0,y,w,1+R()*2)}
+  return c}
 function woodFor(id,kind){id=themeId(id);var key=id+':'+kind;
-  if(!woodCache[key]){var t=T(id),c=kind==='plank'?wood(900,900,150,t.plank,7):wood(700,700,700/3,t.board,21);woodCache[key]={canvas:c,url:c.toDataURL('image/jpeg',.85)}}
+  if(!woodCache[key]){var t=T(id),c=kind==='plank'?wood(900,900,150,t.plank,7):(t.plain?painted(700,700,t.board,21):wood(700,700,700/3,t.board,21));woodCache[key]={canvas:c,url:c.toDataURL('image/jpeg',.85)}}
   return woodCache[key]}
 function themeVars(el,id){var t=T(id),s=el.style;
   s.setProperty('--board','rgb('+t.board.join(',')+')');s.setProperty('--board-edge',t.edge);s.setProperty('--paper',t.paper);
@@ -366,6 +374,7 @@ function moon(x,cx,cy,r){
 }
 function paintVines(x,W,H,k,id){
   var t=T(id);k=k||1;var R=rng(42),E=rng(11),small=W/k<620,inset=(small?14:24)*k;
+  if(t.plain){var a1=inset*1.1,a2=a1+5*k;x.save();x.strokeStyle=t.line;x.lineWidth=2*k;x.strokeRect(a1,a1,W-2*a1,H-2*a1);x.lineWidth=1*k;x.strokeRect(a2,a2,W-2*a2,H-2*a2);x.restore();return}
   var step=6*k,per=2*(W+H-4*inset);
   function at(d){d=(d%per+per)%per;var w=W-2*inset,h=H-2*inset;
     if(d<w)return[inset+d,inset,0];d-=w;if(d<h)return[W-inset,inset+d,Math.PI/2];d-=h;if(d<w)return[W-inset-d,H-inset,Math.PI];d-=w;return[inset,H-inset-d,-Math.PI/2]}
@@ -415,7 +424,7 @@ function drawVines(){
   paintVines(x,W,H,1,cur&&cur.theme);
 }
 var previewCache={};
-function themePreview(id){if(previewCache[id])return previewCache[id];var t=T(id),W=240,H=150,c=wood(W,H,50,t.board,21),x=c.getContext('2d');
+function themePreview(id){if(previewCache[id])return previewCache[id];var t=T(id),W=240,H=150,c=t.plain?painted(W,H,t.board,21):wood(W,H,50,t.board,21),x=c.getContext('2d');
   x.strokeStyle=t.edge;x.lineWidth=6;x.strokeRect(3,3,W-6,H-6);
   x.save();x.translate(W/2,H/2+8);x.rotate(-.02);x.shadowColor='rgba(0,0,0,.4)';x.shadowBlur=6;x.shadowOffsetY=3;x.fillStyle=t.paper;x.fillRect(-56,-34,112,68);x.shadowColor='transparent';
   var g=x.createLinearGradient(-50,-28,50,28);g.addColorStop(0,'#b9ab92');g.addColorStop(1,'#d8cdb8');x.fillStyle=g;x.fillRect(-51,-29,102,58);
