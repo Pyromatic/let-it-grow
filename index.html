@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Let It Grow</title>
+<title>Barry and Manda's Whimsical Adventures</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&family=Caveat:wght@500;700&family=Bitter:wght@400;600&family=Playfair+Display:wght@700&family=Cinzel:wght@600&family=Creepster&family=Pacifico&display=swap">
@@ -52,7 +52,7 @@ body{
 
 /* ---------- home: collections shelf ---------- */
 .site-head{text-align:center;display:flex;flex-direction:column;gap:4px;padding-block:6px 10px}
-.site-head h1{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(40px,7vw,72px);line-height:1.05;color:var(--cream);
+.site-head h1{margin:0 auto;max-width:18ch;font-family:var(--f-display);font-weight:400;font-size:clamp(34px,6vw,64px);line-height:1.05;color:var(--cream);
   text-shadow:0 2px 0 rgba(0,0,0,.5);text-wrap:balance}
 .eyebrow{font-weight:600;font-size:13px;letter-spacing:.32em;text-transform:uppercase;color:var(--pumpkin)}
 .shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:34px 28px}
@@ -187,7 +187,7 @@ body{
 <div class="wrap" id="home">
   <header class="site-head">
     <span class="eyebrow">Collections</span>
-    <h1>Let It Grow</h1>
+    <h1>Barry and Manda’s Whimsical Adventures</h1>
   </header>
   <div class="loading" id="homeLoading">Gathering the albums…</div>
   <div class="shelf" id="shelf" hidden></div>
@@ -577,7 +577,7 @@ window.addEventListener('hashchange',route);
 
 /* ---------- home ---------- */
 function showHome(){
-  cur=null;$('album').hidden=true;$('home').hidden=false;document.title='Let It Grow';setPageWood('grove');
+  cur=null;$('album').hidden=true;$('home').hidden=false;document.title='Barry and Manda’s Whimsical Adventures';setPageWood('grove');
   list('').then(function(rows){
     var folders=rows.filter(function(o){return !o.id&&/^c-/.test(o.name)}).map(function(o){return o.name});
     var main=parseRows('',rows);
@@ -633,7 +633,7 @@ function openAlbum(id){
   var same=cur&&cur.id===id;
   if(!same){page=0;extraPages=0;lastSig='';$('themePanel').hidden=true;$('themeBtn').setAttribute('aria-expanded','false');$('pageBody').innerHTML='<div class="loading">Opening the album…</div>'}
   $('delColl').hidden=id==='main';$('delColl').classList.remove('armed');$('delColl').textContent='Delete collection';
-  return loadCollection(id).then(function(c){cur=c;document.title=c.title+' · Let It Grow';lastSig=sig(c);render()},function(){
+  return loadCollection(id).then(function(c){cur=c;document.title=c.title+' · Barry and Manda’s Whimsical Adventures';lastSig=sig(c);render()},function(){
     $('pageBody').innerHTML='<div class="loading">Couldn’t open this album. Check your connection and reload.</div>'});
 }
 function sig(c){return c.media.map(function(m){return m.path}).join('|')+'#'+c.cover+'#'+c.title+'#'+c.sub+'#'+c.theme+'#'+c.fonts.title+c.fonts.sub}
