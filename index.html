@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredericka+the+Great&family=Caveat:wght@500;700&family=Bitter:wght@400;600&family=Playfair+Display:wght@700&family=Cinzel:wght@600&family=Creepster&family=Pacifico&display=swap">
 <style>
+@font-face{font-family:"ToastEggs";src:url("fonts/toasteggs.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
 /* Layout: dark plank floor. Home is a shelf of small carved albums; opening one shows a carved board whose first page is the cover (one big taped 16:9 photo under the title), then pages of four taped 16:9 prints. Vines grow around every board. Single committed look. */
 :root{
   --plank:#3b2417;
@@ -678,9 +679,10 @@ var FONTS={
   engraved:{name:'Engraved',fam:'Cinzel,"Trajan Pro",Georgia,serif',w:600,scale:.9},
   hand:{name:'Handwritten',fam:'Caveat,"Segoe Print",cursive',w:700,scale:1.2,script:true},
   spooky:{name:'Spooky',fam:'Creepster,Impact,fantasy',w:400,scale:1.05},
-  retro:{name:'Retro',fam:'Pacifico,"Brush Script MT",cursive',w:400,scale:.85,script:true}
+  retro:{name:'Retro',fam:'Pacifico,"Brush Script MT",cursive',w:400,scale:.85,script:true},
+  toast:{name:'Toast Eggs',fam:'ToastEggs,"Segoe Print",cursive',w:400}
 };
-var FONT_ORDER=['carved','slab','classic','engraved','hand','spooky','retro'];
+var FONT_ORDER=['carved','slab','classic','engraved','hand','spooky','retro','toast'];
 var FONT_DEFAULT={title:'carved',sub:'slab'};
 function F(id){return FONTS[id]||FONTS.carved}
 function fontsOf(m){var f=(m&&m.fonts)||{};return{title:FONTS[f.title]?f.title:FONT_DEFAULT.title,sub:FONTS[f.sub]?f.sub:FONT_DEFAULT.sub}}
